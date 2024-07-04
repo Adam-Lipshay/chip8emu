@@ -4,14 +4,14 @@ use crate::font::{self, FONT};
 use sdl2::pixels::Color;
 use std::num::Wrapping;
 use sdl2::rect::Point;
+use rand::Rng;
 
 #[derive(PartialEq)]
-enum SHIFT_TYPES {
-    As_Y,
-    As_X,
+enum ShiftTypes {
+    AsX,
 }
 
-const SHIFT_TYPE: SHIFT_TYPES = SHIFT_TYPES::As_X;
+const SHIFT_TYPE: ShiftTypes = ShiftTypes::AsX;
 
 const BACKGROUND_COLOR: Color = Color::RGB(0, 0, 0);
 const DRAW_COLOR: Color = Color::RGB(255, 255, 255);
@@ -99,7 +99,15 @@ impl CPU<'_> {
             },
             0x9 => self.jump_if_reg_not_equal(instruction),
             0xA => self.set_index(instruction),
+            0xC => self.random(instruction),
             0xD => self.display_sprite(instruction),
+            0xF => match instruction & 0x00FF {
+                0x0007 => self.get_delay_timer(instruction),
+                0x0015 => self.set_delay_timer(instruction),
+                0x0018 => self.set_sound_timer(instruction),
+                0x001E => self.add_to_index(instruction),
+                _ => println!("unknow F instruction {:#06x}", instruction)
+            },
 
             _ => println!("unknown instruction {:#06x}", instruction)
         }
@@ -277,7 +285,7 @@ impl CPU<'_> {
     }
 
     fn shift_register_right(&mut self, instruction: u16) {
-        if SHIFT_TYPE == SHIFT_TYPES::As_X {
+        if SHIFT_TYPE == ShiftTypes::AsX {
             if self.vx[((instruction & 0x0F00) >> 8) as usize].0 & 1 == 1 {
                 self.vx[0xF as usize] = Wrapping(1);
             } else {
@@ -295,7 +303,7 @@ impl CPU<'_> {
     }
 
     fn shift_register_left(&mut self, instruction: u16) {
-        if SHIFT_TYPE == SHIFT_TYPES::As_X {
+        if SHIFT_TYPE == ShiftTypes::AsX {
             if self.vx[((instruction & 0x0F00) >> 8) as usize].0 & (1 << 7) == 128 {
                 self.vx[0xF as usize] = Wrapping(1);
             } else {
@@ -310,5 +318,26 @@ impl CPU<'_> {
             }
             self.vx[((instruction & 0x0F00) >> 8) as usize] = Wrapping(self.vx[((instruction & 0x00F0) >> 4) as usize].0 << 1);
         }
+    }
+
+    fn random(&mut self, instruction: u16) {
+        let random_number: u8 = rand::thread_rng().gen();
+        self.vx[((instruction & 0x0F00) >> 8) as usize] = self.vx[((instruction & 0x0F00) >> 8) as usize] & Wrapping(random_number);
+    }
+
+    fn get_delay_timer(&mut self, instruction: u16) {
+        self.vx[((instruction & 0x0F00) >> 8) as usize] = Wrapping(self.delay_timer);
+    }
+
+    fn set_delay_timer(&mut self, instruction: u16) {
+        self.delay_timer = self.vx[((instruction & 0x0F00) >> 8) as usize].0;
+    }
+
+    fn set_sound_timer(&mut self, instruction: u16) {
+        self.sound_timer = self.vx[((instruction & 0x0F00) >> 8) as usize].0;
+    }
+
+    fn add_to_index(&mut self, instruction: u16) {
+        self.index_register += self.vx[((instruction & 0x0F00) >> 8) as usize].0 as u16;
     }
 }
