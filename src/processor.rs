@@ -5,6 +5,13 @@ use sdl2::pixels::Color;
 use std::num::Wrapping;
 use sdl2::rect::Point;
 
+#[derive(PartialEq)]
+enum SHIFT_TYPES {
+    As_Y,
+    As_X,
+}
+
+const SHIFT_TYPE: SHIFT_TYPES = SHIFT_TYPES::As_X;
 
 const BACKGROUND_COLOR: Color = Color::RGB(0, 0, 0);
 const DRAW_COLOR: Color = Color::RGB(255, 255, 255);
@@ -68,11 +75,29 @@ impl CPU<'_> {
         match (instruction & 0xF000) >> 12 {
             0x0 => match instruction {
                 0x00E0 => self.clear_screen(),
+                0x00EE => self.stack_return(),
                 _ => panic!("unknow 0 instruction {:#06x}", instruction)
             },
             0x1 => self.jump(instruction),
-            0x6 => self.set_register(instruction),
-            0x7 => self.add_register(instruction),
+            0x2 => self.call_subroutine(instruction),
+            0x3 => self.jump_if_val_is_equal(instruction),
+            0x4 => self.jump_if_val_not_equal(instruction),
+            0x5 => self.jump_if_reg_is_equal(instruction),
+            0x6 => self.set_as_value(instruction),
+            0x7 => self.add_as_value(instruction),
+            0x8 => match instruction & 0x000F {
+                0x0000 => self.set_as_register(instruction),
+                0x0001 => self.or_register(instruction),
+                0x0002 => self.and_register(instruction),
+                0x0003 => self.xor_register(instruction),
+                0x0004 => self.add_as_register(instruction),
+                0x0005 => self.sub_vx_xy(instruction),
+                0x0006 => self.shift_register_right(instruction),
+                0x0007 => self.sub_vy_xx(instruction),
+                0x000E => self.shift_register_left(instruction),
+                _ => panic!("unknow 8 instruction {:#06x}", instruction)
+            },
+            0x9 => self.jump_if_reg_not_equal(instruction),
             0xA => self.set_index(instruction),
             0xD => self.display_sprite(instruction),
 
@@ -127,11 +152,11 @@ impl CPU<'_> {
         self.pc = instruction & 0x0FFF;
     }
 
-    fn set_register(&mut self, instruction: u16) {
+    fn set_as_value(&mut self, instruction: u16) {
         self.vx[((instruction & 0x0F00) >> 8) as usize] = Wrapping((instruction & 0x00FF) as u8);
     }
 
-    fn add_register(&mut self, instruction: u16) {
+    fn add_as_value(&mut self, instruction: u16) {
         self.vx[((instruction & 0x0F00) >> 8) as usize] = self.vx[((instruction & 0x0F00) >> 8) as usize] + Wrapping((instruction & 0x00FF) as u8);
     }
 
@@ -166,5 +191,124 @@ impl CPU<'_> {
         }
 
         self.update_display();
+    }
+
+    fn call_subroutine(&mut self, instruction: u16) {
+        self.stack_register.push(self.pc);
+        self.pc = instruction & (0x0FFF);
+    }
+
+    fn stack_return(&mut self) {
+        self.pc = match self.stack_register.pop() {
+            Some(address) => address,
+            None => panic!("called return with empty stack"),
+        };
+    }
+
+    fn jump_if_val_is_equal(&mut self, instruction: u16) {
+        if self.vx[(instruction & (0x0F00) >> 8) as usize] == Wrapping((instruction & 0x00FF) as u8) {
+            self.pc += 2
+        }
+    }
+
+    fn jump_if_val_not_equal(&mut self, instruction: u16) {
+        if self.vx[(instruction & (0x0F00) >> 8) as usize] != Wrapping((instruction & 0x00FF) as u8) {
+            self.pc += 2
+        }
+    }
+
+    fn jump_if_reg_is_equal(&mut self, instruction: u16) {
+        if self.vx[(instruction & (0x0F00) >> 8) as usize] == self.vx[(instruction & (0x00F0) >> 4) as usize] {
+            self.pc += 2
+        }
+    }
+
+    fn jump_if_reg_not_equal(&mut self, instruction: u16) {
+        if self.vx[(instruction & (0x0F00) >> 8) as usize] != self.vx[(instruction & (0x00F0) >> 4) as usize] {
+            self.pc += 2
+        }
+    }
+
+    fn set_as_register(&mut self, instruction: u16) {
+        self.vx[((instruction & 0x0F00) >> 8) as usize] = self.vx[(instruction & (0x00F0) >> 4) as usize];
+    }
+
+    fn or_register(&mut self, instruction: u16) {
+        self.vx[((instruction & 0x0F00) >> 8) as usize] = self.vx[((instruction & 0x0F00) >> 8) as usize] | self.vx[(instruction & (0x00F0) >> 4) as usize];
+    }
+
+    fn and_register(&mut self, instruction: u16) {
+        self.vx[((instruction & 0x0F00) >> 8) as usize] = self.vx[((instruction & 0x0F00) >> 8) as usize] & self.vx[(instruction & (0x00F0) >> 4) as usize];
+    }
+
+    fn xor_register(&mut self, instruction: u16) {
+        self.vx[((instruction & 0x0F00) >> 8) as usize] = self.vx[((instruction & 0x0F00) >> 8) as usize] ^ self.vx[(instruction & (0x00F0) >> 4) as usize];
+    }
+
+    fn add_as_register(&mut self, instruction: u16) {
+        let x = self.vx[((instruction & 0x0F00) >> 8) as usize];
+        let y = self.vx[(instruction & (0x00F0) >> 4) as usize];
+        self.vx[((instruction & 0x0F00) >> 8) as usize] = x + y;
+        if (x.0 as u16 + y.0 as u16) > u8::MAX as u16 {
+            self.vx[0xF as usize] = Wrapping(1);
+        }
+    }
+
+    fn sub_vx_xy(&mut self, instruction: u16) {
+        let x = self.vx[((instruction & 0x0F00) >> 8) as usize];
+        let y = self.vx[(instruction & (0x00F0) >> 4) as usize];
+        self.vx[((instruction & 0x0F00) >> 8) as usize] = x - y;
+        if x > y {
+            self.vx[0xF as usize] = Wrapping(1);
+        } else {
+            self.vx[0xF as usize] = Wrapping(0);
+        }
+    }
+
+    fn sub_vy_xx(&mut self, instruction: u16) {
+        let x = self.vx[((instruction & 0x0F00) >> 8) as usize];
+        let y = self.vx[(instruction & (0x00F0) >> 4) as usize];
+        self.vx[((instruction & 0x0F00) >> 8) as usize] = y - x;
+        if y > x {
+            self.vx[0xF as usize] = Wrapping(1);
+        } else {
+            self.vx[0xF as usize] = Wrapping(0);
+        }
+    }
+
+    fn shift_register_right(&mut self, instruction: u16) {
+        if SHIFT_TYPE == SHIFT_TYPES::As_X {
+            if self.vx[((instruction & 0x0F00) >> 8) as usize].0 & 1 == 1 {
+                self.vx[0xF as usize] = Wrapping(1);
+            } else {
+                self.vx[0xF as usize] = Wrapping(0);
+            }
+            self.vx[((instruction & 0x0F00) >> 8) as usize] = Wrapping(self.vx[((instruction & 0x0F00) >> 8) as usize].0 >> 1);
+        } else {
+            if self.vx[((instruction & 0x00F0) >> 4) as usize].0 & 1 == 1 {
+                self.vx[0xF as usize] = Wrapping(1);
+            } else {
+                self.vx[0xF as usize] = Wrapping(0);
+            }
+            self.vx[((instruction & 0x0F00) >> 8) as usize] = Wrapping(self.vx[((instruction & 0x00F0) >> 4) as usize].0 >> 1);
+        }
+    }
+
+    fn shift_register_left(&mut self, instruction: u16) {
+        if SHIFT_TYPE == SHIFT_TYPES::As_X {
+            if self.vx[((instruction & 0x0F00) >> 8) as usize].0 & (1 << 7) == 128 {
+                self.vx[0xF as usize] = Wrapping(1);
+            } else {
+                self.vx[0xF as usize] = Wrapping(0);
+            }
+            self.vx[((instruction & 0x0F00) >> 8) as usize] = Wrapping(self.vx[((instruction & 0x0F00) >> 8) as usize].0 << 1);
+        } else {
+            if self.vx[((instruction & 0x00F0) >> 4) as usize].0 & (1 << 7) == 128 {
+                self.vx[0xF as usize] = Wrapping(1);
+            } else {
+                self.vx[0xF as usize] = Wrapping(0);
+            }
+            self.vx[((instruction & 0x0F00) >> 8) as usize] = Wrapping(self.vx[((instruction & 0x00F0) >> 4) as usize].0 << 1);
+        }
     }
 }
