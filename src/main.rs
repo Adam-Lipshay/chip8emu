@@ -9,6 +9,29 @@ use std::time::{SystemTime, Duration};
 const SLEEP_TIME: u64 = 2;
 
 
+use sdl2::audio::{AudioCallback, AudioSpecDesired};
+use std::f32::consts::PI;
+
+struct SineWave {
+    phase: f32,
+    frequency: f32,
+    volume: f32,
+}
+
+impl AudioCallback for SineWave {
+    type Channel = f32;
+
+    fn callback(&mut self, out: &mut [f32]) {
+        const SAMPLE_RATE: f32 = 44100.0;
+        let angular_frequency = 2.0 * PI * self.frequency / SAMPLE_RATE;
+        
+        for x in out.iter_mut() {
+            *x = self.volume * (self.phase * angular_frequency).sin();
+            self.phase += 1.0;
+        }
+    }
+}
+
 pub fn main() {
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
@@ -25,7 +48,23 @@ pub fn main() {
     canvas.clear();
     canvas.present();
 
-    let mut cpu = processor::CPU::new(&mut canvas);
+    let audio_subsystem = sdl_context.audio().unwrap();
+
+    let desired_spec = AudioSpecDesired {
+        freq: Some(44100),
+        channels: Some(1),
+        samples: None,
+    };
+
+    let device = audio_subsystem.open_playback(None, &desired_spec, |spec| {
+        SineWave {
+            phase: 0.0,
+            frequency: 440.0,
+            volume: 0.5,
+        }
+    }).unwrap();
+
+    let mut cpu = processor::CPU::new(&mut canvas, device);
     let rom = std::fs::read("ROMs/test_opcode.ch8").unwrap();
     cpu.load(rom);
 

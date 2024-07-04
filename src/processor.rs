@@ -1,6 +1,6 @@
-use sdl2::render::Canvas;
+use sdl2::{audio::AudioDevice, render::Canvas};
 
-use crate::font::{self, FONT};
+use crate::{font::{self, FONT}, SineWave};
 use sdl2::pixels::Color;
 use std::num::Wrapping;
 use sdl2::rect::Point;
@@ -26,11 +26,12 @@ pub struct CPU<'a> {
     delay_timer: u8,
     sound_timer: u8,
     display: &'a mut Canvas<sdl2::video::Window>,
+    audio_device: AudioDevice<SineWave>,
     display_array: [u64; 32],
 }
 
 impl CPU<'_> {
-    pub fn new(canvas: &mut Canvas<sdl2::video::Window>) -> CPU {
+    pub fn new(canvas: &mut Canvas<sdl2::video::Window>, device: AudioDevice<SineWave>) -> CPU {
         let mut ram: [u8; 4096] = [0; 4096];
         for i in 0..font::FONT.len() {
             ram[0x050 + i] = FONT[i];
@@ -44,6 +45,7 @@ impl CPU<'_> {
             delay_timer: 0,
             sound_timer: 0,
             display: canvas,
+            audio_device: device,
             display_array: [0; 32],
         }
     }
@@ -143,6 +145,11 @@ impl CPU<'_> {
     pub fn run(&mut self) {
         let instruction = self.fetch();
         self.execute(instruction);
+        if self.sound_timer > 0 {
+            self.audio_device.resume();
+        } else {
+            self.audio_device.pause();
+        }
     }
 
     
