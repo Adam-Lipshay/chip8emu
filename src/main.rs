@@ -26,7 +26,7 @@ pub fn main() {
     canvas.present();
 
     let mut cpu = processor::CPU::new(&mut canvas);
-    let rom = std::fs::read("ROMs/IBM.ch8").unwrap();
+    let rom = std::fs::read("ROMs/test_opcode.ch8").unwrap();
     cpu.load(rom);
 
     let mut event_pump = sdl_context.event_pump().unwrap();

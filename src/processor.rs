@@ -76,7 +76,7 @@ impl CPU<'_> {
             0x0 => match instruction {
                 0x00E0 => self.clear_screen(),
                 0x00EE => self.stack_return(),
-                _ => panic!("unknow 0 instruction {:#06x}", instruction)
+                _ => println!("unknow 0 instruction {:#06x}", instruction)
             },
             0x1 => self.jump(instruction),
             0x2 => self.call_subroutine(instruction),
@@ -95,13 +95,13 @@ impl CPU<'_> {
                 0x0006 => self.shift_register_right(instruction),
                 0x0007 => self.sub_vy_xx(instruction),
                 0x000E => self.shift_register_left(instruction),
-                _ => panic!("unknow 8 instruction {:#06x}", instruction)
+                _ => println!("unknow 8 instruction {:#06x}", instruction)
             },
             0x9 => self.jump_if_reg_not_equal(instruction),
             0xA => self.set_index(instruction),
             0xD => self.display_sprite(instruction),
 
-            _ => panic!("unknown instruction {:#06x}", instruction)
+            _ => println!("unknown instruction {:#06x}", instruction)
         }
     }
 
@@ -206,48 +206,48 @@ impl CPU<'_> {
     }
 
     fn jump_if_val_is_equal(&mut self, instruction: u16) {
-        if self.vx[(instruction & (0x0F00) >> 8) as usize] == Wrapping((instruction & 0x00FF) as u8) {
-            self.pc += 2
+        if self.vx[((instruction & 0x0F00) >> 8) as usize].0 == (instruction & 0x00FF) as u8 {
+            self.pc += 2;
         }
     }
 
     fn jump_if_val_not_equal(&mut self, instruction: u16) {
-        if self.vx[(instruction & (0x0F00) >> 8) as usize] != Wrapping((instruction & 0x00FF) as u8) {
-            self.pc += 2
+        if self.vx[((instruction & 0x0F00) >> 8) as usize].0 != (instruction & 0x00FF) as u8 {
+            self.pc += 2;
         }
     }
 
     fn jump_if_reg_is_equal(&mut self, instruction: u16) {
-        if self.vx[(instruction & (0x0F00) >> 8) as usize] == self.vx[(instruction & (0x00F0) >> 4) as usize] {
-            self.pc += 2
+        if self.vx[((instruction & 0x0F00) >> 8) as usize] == self.vx[((instruction & 0x00F0) >> 4) as usize] {
+            self.pc += 2;
         }
     }
 
     fn jump_if_reg_not_equal(&mut self, instruction: u16) {
-        if self.vx[(instruction & (0x0F00) >> 8) as usize] != self.vx[(instruction & (0x00F0) >> 4) as usize] {
-            self.pc += 2
+        if self.vx[((instruction & 0x0F00) >> 8) as usize] != self.vx[((instruction & 0x00F0) >> 4) as usize] {
+            self.pc += 2;
         }
     }
 
     fn set_as_register(&mut self, instruction: u16) {
-        self.vx[((instruction & 0x0F00) >> 8) as usize] = self.vx[(instruction & (0x00F0) >> 4) as usize];
+        self.vx[((instruction & 0x0F00) >> 8) as usize] = self.vx[((instruction & 0x00F0) >> 4) as usize];
     }
 
     fn or_register(&mut self, instruction: u16) {
-        self.vx[((instruction & 0x0F00) >> 8) as usize] = self.vx[((instruction & 0x0F00) >> 8) as usize] | self.vx[(instruction & (0x00F0) >> 4) as usize];
+        self.vx[((instruction & 0x0F00) >> 8) as usize] = self.vx[((instruction & 0x0F00) >> 8) as usize] | self.vx[((instruction & 0x00F0) >> 4) as usize];
     }
 
     fn and_register(&mut self, instruction: u16) {
-        self.vx[((instruction & 0x0F00) >> 8) as usize] = self.vx[((instruction & 0x0F00) >> 8) as usize] & self.vx[(instruction & (0x00F0) >> 4) as usize];
+        self.vx[((instruction & 0x0F00) >> 8) as usize] = self.vx[((instruction & 0x0F00) >> 8) as usize] & self.vx[((instruction & 0x00F0) >> 4) as usize];
     }
 
     fn xor_register(&mut self, instruction: u16) {
-        self.vx[((instruction & 0x0F00) >> 8) as usize] = self.vx[((instruction & 0x0F00) >> 8) as usize] ^ self.vx[(instruction & (0x00F0) >> 4) as usize];
+        self.vx[((instruction & 0x0F00) >> 8) as usize] = self.vx[((instruction & 0x0F00) >> 8) as usize] ^ self.vx[((instruction & 0x00F0) >> 4) as usize];
     }
 
     fn add_as_register(&mut self, instruction: u16) {
         let x = self.vx[((instruction & 0x0F00) >> 8) as usize];
-        let y = self.vx[(instruction & (0x00F0) >> 4) as usize];
+        let y = self.vx[((instruction & 0x00F0) >> 4) as usize];
         self.vx[((instruction & 0x0F00) >> 8) as usize] = x + y;
         if (x.0 as u16 + y.0 as u16) > u8::MAX as u16 {
             self.vx[0xF as usize] = Wrapping(1);
@@ -256,7 +256,7 @@ impl CPU<'_> {
 
     fn sub_vx_xy(&mut self, instruction: u16) {
         let x = self.vx[((instruction & 0x0F00) >> 8) as usize];
-        let y = self.vx[(instruction & (0x00F0) >> 4) as usize];
+        let y = self.vx[((instruction & 0x00F0) >> 4) as usize];
         self.vx[((instruction & 0x0F00) >> 8) as usize] = x - y;
         if x > y {
             self.vx[0xF as usize] = Wrapping(1);
@@ -267,7 +267,7 @@ impl CPU<'_> {
 
     fn sub_vy_xx(&mut self, instruction: u16) {
         let x = self.vx[((instruction & 0x0F00) >> 8) as usize];
-        let y = self.vx[(instruction & (0x00F0) >> 4) as usize];
+        let y = self.vx[((instruction & 0x00F0) >> 4) as usize];
         self.vx[((instruction & 0x0F00) >> 8) as usize] = y - x;
         if y > x {
             self.vx[0xF as usize] = Wrapping(1);
