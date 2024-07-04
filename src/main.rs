@@ -20,7 +20,7 @@ pub fn main() {
 
     let mut canvas = window.into_canvas().build().unwrap();
     
-    canvas.set_scale(20.0, 20.0).unwrap_err();
+    canvas.set_scale(20.0, 20.0).expect("Failed to set scale");
     canvas.set_draw_color(Color::RGB(0, 0, 0));
     canvas.clear();
     canvas.present();

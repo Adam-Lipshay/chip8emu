@@ -100,7 +100,7 @@ impl CPU<'_> {
             for column in 0..63 {
                 if (self.display_array[row] & (1 << column)) != 0 {
                     self.display.set_draw_color(DRAW_COLOR);
-                    self.display.draw_point(Point::new(column, row as i32)).unwrap_err();
+                    self.display.draw_point(Point::new(column, row as i32)).expect("Failed to draw point");
                 }
             }
         }
