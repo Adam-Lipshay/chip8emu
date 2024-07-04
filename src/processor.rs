@@ -1,4 +1,4 @@
-use sdl2::{render::Canvas, sys::Window};
+use sdl2::render::Canvas;
 
 use crate::font::{self, FONT};
 use sdl2::pixels::Color;
@@ -43,7 +43,7 @@ impl CPU<'_> {
 
     pub fn load(&mut self, data: Vec<u8>) {
         for i in 0..data.len() {
-            if(0x200+i > 4095) {
+            if 0x200 + i > 4095 {
                 panic!("ROM too large!");
             }
             self.memory[0x200 + i] = *data.get(i).unwrap();
@@ -51,16 +51,12 @@ impl CPU<'_> {
     }
 
     pub fn update_timers(&mut self) {
-        if(self.delay_timer > 0) {
+        if self.delay_timer > 0 {
             self.delay_timer -= 1;
         }
-        if(self.sound_timer > 0) {
+        if self.sound_timer > 0 {
             self.sound_timer -= 1;
         }
-    }
-
-    pub fn start(&mut self) {
-        self.pc = 0x200;
     }
 
     fn fetch(&mut self) -> u16 {
@@ -89,10 +85,10 @@ impl CPU<'_> {
     }
 
     fn set_pixel(&mut self, x: u32, y: u32, bit: u8) {
-        if(bit == 1) {
+        if bit == 1 {
             self.display_array[y as usize] = self.display_array[y as usize] | (1 << x);
         }
-        if(bit == 0) {
+        if bit == 0  {
             self.display_array[y as usize] = self.display_array[y as usize] & !(1 << x);
         }
     }
@@ -102,9 +98,9 @@ impl CPU<'_> {
         self.display.clear();
         for row in 0..31 {
             for column in 0..63 {
-                if((self.display_array[row] & (1 << column)) != 0) {
+                if (self.display_array[row] & (1 << column)) != 0 {
                     self.display.set_draw_color(DRAW_COLOR);
-                    self.display.draw_point(Point::new(column, row as i32));
+                    self.display.draw_point(Point::new(column, row as i32)).unwrap_err();
                 }
             }
         }
@@ -144,8 +140,8 @@ impl CPU<'_> {
     }
 
     fn display_sprite(&mut self, instruction: u16) {
-        let mut x = self.vx[((instruction & 0x0F00) >> 8) as usize].0 % 64;
-        let mut y = self.vx[((instruction & 0x00F0) >> 4) as usize].0 % 32;
+        let x = self.vx[((instruction & 0x0F00) >> 8) as usize].0 % 64;
+        let y = self.vx[((instruction & 0x00F0) >> 4) as usize].0 % 32;
         self.vx[0xF as usize] = Wrapping(0);
         let n = instruction & 0x000F;
 
@@ -154,12 +150,15 @@ impl CPU<'_> {
 
             for bit in 0..8 {
                 let cx = x + bit;
+                if cx > 63 {
+                    break;
+                }
                 let cy = y as u16 + byte;
                 let cpixel = self.get_pixel(cx as u32, cy as u32);
-                let row_pixel = ((row & (1 << 7 - bit)) >> 7 - bit);
+                let row_pixel = (row & (1 << 7 - bit)) >> 7 - bit;
                 self.set_pixel(cx as u32, cy as u32, cpixel ^ row_pixel);
 
-                if(cpixel == 1 && row_pixel == 1) {
+                if cpixel == 1 && row_pixel == 1 {
                     self.vx[0xF as usize] = Wrapping(1);
                 }
             }

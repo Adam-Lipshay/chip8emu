@@ -20,7 +20,7 @@ pub fn main() {
 
     let mut canvas = window.into_canvas().build().unwrap();
     
-    canvas.set_scale(20.0, 20.0);
+    canvas.set_scale(20.0, 20.0).unwrap_err();
     canvas.set_draw_color(Color::RGB(0, 0, 0));
     canvas.clear();
     canvas.present();
@@ -31,7 +31,6 @@ pub fn main() {
 
     let mut event_pump = sdl_context.event_pump().unwrap();
 
-    cpu.start();
     let mut now = SystemTime::now();
     'running: loop {
 
@@ -45,7 +44,7 @@ pub fn main() {
             }
         }
         
-        if(now.elapsed().unwrap().as_millis() >= 1000) {
+        if now.elapsed().unwrap().as_millis() >= 1000 {
             cpu.update_timers();
             now = SystemTime::now();
         }
