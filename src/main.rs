@@ -56,7 +56,7 @@ pub fn main() {
         samples: None,
     };
 
-    let device = audio_subsystem.open_playback(None, &desired_spec, |spec| {
+    let device = audio_subsystem.open_playback(None, &desired_spec, |_spec| {
         SineWave {
             phase: 0.0,
             frequency: 440.0,
@@ -64,16 +64,16 @@ pub fn main() {
         }
     }).unwrap();
 
-    let mut cpu = processor::CPU::new(&mut canvas, device);
-    let rom = std::fs::read("ROMs/test_opcode.ch8").unwrap();
+    let mut cpu = processor::CPU::new(&mut canvas, device, sdl_context);
+    let rom = std::fs::read("ROMs/BC_test.ch8").unwrap();
     cpu.load(rom);
 
-    let mut event_pump = sdl_context.event_pump().unwrap();
+    // let mut event_pump = sdl_context.event_pump().unwrap();
 
     let mut now = SystemTime::now();
     'running: loop {
 
-        for event in event_pump.poll_iter() {
+        for event in cpu.event.poll_iter() {
             match event {
                 Event::Quit {..} |
                 Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {

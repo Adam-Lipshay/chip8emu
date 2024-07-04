@@ -1,9 +1,12 @@
 use sdl2::{audio::AudioDevice, render::Canvas};
 
 use crate::{font::{self, FONT}, SineWave};
+use sdl2::Sdl;
 use sdl2::pixels::Color;
 use std::num::Wrapping;
 use sdl2::rect::Point;
+use sdl2::keyboard::Keycode;
+use sdl2::event::Event;
 use rand::Rng;
 
 #[derive(PartialEq)]
@@ -27,11 +30,12 @@ pub struct CPU<'a> {
     sound_timer: u8,
     display: &'a mut Canvas<sdl2::video::Window>,
     audio_device: AudioDevice<SineWave>,
+    pub event: sdl2::EventPump,
     display_array: [u64; 32],
 }
 
 impl CPU<'_> {
-    pub fn new(canvas: &mut Canvas<sdl2::video::Window>, device: AudioDevice<SineWave>) -> CPU {
+    pub fn new(canvas: &mut Canvas<sdl2::video::Window>, device: AudioDevice<SineWave>, sdl_context: Sdl) -> CPU {
         let mut ram: [u8; 4096] = [0; 4096];
         for i in 0..font::FONT.len() {
             ram[0x050 + i] = FONT[i];
@@ -46,6 +50,7 @@ impl CPU<'_> {
             sound_timer: 0,
             display: canvas,
             audio_device: device,
+            event: sdl_context.event_pump().unwrap(),
             display_array: [0; 32],
         }
     }
@@ -108,6 +113,7 @@ impl CPU<'_> {
                 0x0015 => self.set_delay_timer(instruction),
                 0x0018 => self.set_sound_timer(instruction),
                 0x001E => self.add_to_index(instruction),
+                0x000A => self.get_key(instruction),
                 _ => println!("unknow F instruction {:#06x}", instruction)
             },
 
@@ -346,5 +352,80 @@ impl CPU<'_> {
 
     fn add_to_index(&mut self, instruction: u16) {
         self.index_register += self.vx[((instruction & 0x0F00) >> 8) as usize].0 as u16;
+    }
+
+    fn get_key(&mut self, instruction: u16) {
+        'wait_key: loop {
+            for event in self.event.poll_iter() {
+                match event {
+                    Event::KeyDown { keycode: Some(Keycode::NUM_1), .. } => {
+                        self.vx[((instruction & 0x0F00) >> 8) as usize] = Wrapping(0x1);
+                        break 'wait_key
+                    },
+                    Event::KeyDown { keycode: Some(Keycode::NUM_2), .. } => {
+                        self.vx[((instruction & 0x0F00) >> 8) as usize] = Wrapping(0x2);
+                        break 'wait_key
+                    },
+                    Event::KeyDown { keycode: Some(Keycode::NUM_3), .. } => {
+                        self.vx[((instruction & 0x0F00) >> 8) as usize] = Wrapping(0x3);
+                        break 'wait_key
+                    },
+                    Event::KeyDown { keycode: Some(Keycode::NUM_4), .. } => {
+                        self.vx[((instruction & 0x0F00) >> 8) as usize] = Wrapping(0xC);
+                        break 'wait_key
+                    },
+                    Event::KeyDown { keycode: Some(Keycode::Q), .. } => {
+                        self.vx[((instruction & 0x0F00) >> 8) as usize] = Wrapping(0x4);
+                        break 'wait_key
+                    },
+                    Event::KeyDown { keycode: Some(Keycode::W), .. } => {
+                        self.vx[((instruction & 0x0F00) >> 8) as usize] = Wrapping(0x5);
+                        break 'wait_key
+                    },
+                    Event::KeyDown { keycode: Some(Keycode::E), .. } => {
+                        self.vx[((instruction & 0x0F00) >> 8) as usize] = Wrapping(0x6);
+                        break 'wait_key
+                    },
+                    Event::KeyDown { keycode: Some(Keycode::R), .. } => {
+                        self.vx[((instruction & 0x0F00) >> 8) as usize] = Wrapping(0xD);
+                        break 'wait_key
+                    },
+                    Event::KeyDown { keycode: Some(Keycode::A), .. } => {
+                        self.vx[((instruction & 0x0F00) >> 8) as usize] = Wrapping(0x7);
+                        break 'wait_key
+                    },
+                    Event::KeyDown { keycode: Some(Keycode::S), .. } => {
+                        self.vx[((instruction & 0x0F00) >> 8) as usize] = Wrapping(0x8);
+                        break 'wait_key
+                    },
+                    Event::KeyDown { keycode: Some(Keycode::D), .. } => {
+                        self.vx[((instruction & 0x0F00) >> 8) as usize] = Wrapping(0x9);
+                        break 'wait_key
+                    },
+                    Event::KeyDown { keycode: Some(Keycode::F), .. } => {
+                        self.vx[((instruction & 0x0F00) >> 8) as usize] = Wrapping(0xE);
+                        break 'wait_key
+                    },
+                    Event::KeyDown { keycode: Some(Keycode::Z), .. } => {
+                        self.vx[((instruction & 0x0F00) >> 8) as usize] = Wrapping(0xA);
+                        break 'wait_key
+                    },
+                    Event::KeyDown { keycode: Some(Keycode::X), .. } => {
+                        self.vx[((instruction & 0x0F00) >> 8) as usize] = Wrapping(0x0);
+                        break 'wait_key
+                    },
+                    Event::KeyDown { keycode: Some(Keycode::C), .. } => {
+                        self.vx[((instruction & 0x0F00) >> 8) as usize] = Wrapping(0xB);
+                        break 'wait_key
+                    },
+                    Event::KeyDown { keycode: Some(Keycode::V), .. } => {
+                        self.vx[((instruction & 0x0F00) >> 8) as usize] = Wrapping(0xF);
+                        break 'wait_key
+                    },
+                    _ => {}
+                }
+            }
+        }
+        
     }
 }
