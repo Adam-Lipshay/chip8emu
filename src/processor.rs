@@ -1,9 +1,9 @@
-use sdl2::{audio::AudioDevice, render::Canvas};
+use sdl2::{audio::AudioDevice, keyboard::Scancode, render::Canvas};
 
 use crate::{font::{self, FONT}, SineWave};
 use sdl2::Sdl;
 use sdl2::pixels::Color;
-use std::num::Wrapping;
+use std::{num::Wrapping, time::SystemTime};
 use sdl2::rect::Point;
 use sdl2::keyboard::Keycode;
 use sdl2::event::Event;
@@ -19,6 +19,10 @@ const SHIFT_TYPE: ShiftTypes = ShiftTypes::AsX;
 const BACKGROUND_COLOR: Color = Color::RGB(0, 0, 0);
 const DRAW_COLOR: Color = Color::RGB(255, 255, 255);
 
+static SCAN_CODES: [Scancode; 16] = [Scancode::X, Scancode::Num1, Scancode::Num2, Scancode::Num3, 
+                                  Scancode::Q, Scancode::W, Scancode::E, Scancode::A, 
+                                  Scancode::S, Scancode::D, Scancode::Z, Scancode::C, 
+                                  Scancode::Num4, Scancode::R, Scancode::F, Scancode::V];
 
 pub struct CPU<'a> {
     memory: [u8; 4096],
@@ -32,6 +36,7 @@ pub struct CPU<'a> {
     audio_device: AudioDevice<SineWave>,
     pub event: sdl2::EventPump,
     display_array: [u64; 32],
+    current_time: SystemTime,
 }
 
 impl CPU<'_> {
@@ -52,6 +57,7 @@ impl CPU<'_> {
             audio_device: device,
             event: sdl_context.event_pump().unwrap(),
             display_array: [0; 32],
+            current_time: SystemTime::now(),
         }
     }
 
@@ -108,6 +114,11 @@ impl CPU<'_> {
             0xA => self.set_index(instruction),
             0xC => self.random(instruction),
             0xD => self.display_sprite(instruction),
+            0xE => match instruction & 0x00FF {
+                0x009E => self.skip_if_key(instruction),
+                0x00A1 => self.skip_if_not_key(instruction),
+                _ => println!("unknow 0 instruction {:#06x}", instruction)
+            },
             0xF => match instruction & 0x00FF {
                 0x0007 => self.get_delay_timer(instruction),
                 0x0015 => self.set_delay_timer(instruction),
@@ -138,6 +149,10 @@ impl CPU<'_> {
         }
     }
 
+    fn is_key_down(&mut self, key: u8) -> bool {
+        self.event.keyboard_state().is_scancode_pressed(SCAN_CODES[key as usize])
+    }
+
     fn update_display(&mut self) {
         self.display.set_draw_color(BACKGROUND_COLOR);
         self.display.clear();
@@ -153,6 +168,10 @@ impl CPU<'_> {
     }
 
     pub fn run(&mut self) {
+        if self.current_time.elapsed().unwrap().as_millis() >= 1000 {
+            self.update_timers();
+            self.current_time = SystemTime::now();
+        }
         let instruction = self.fetch();
         self.execute(instruction);
         if self.sound_timer > 0 {
@@ -367,69 +386,73 @@ impl CPU<'_> {
 
     fn get_key(&mut self, instruction: u16) {
         'wait_key: loop {
+            if self.current_time.elapsed().unwrap().as_millis() >= 1000 {
+                self.update_timers();
+                self.current_time = SystemTime::now();
+            }
             for event in self.event.poll_iter() {
                 match event {
-                    Event::KeyDown { keycode: Some(Keycode::NUM_1), .. } => {
+                    Event::KeyUp { keycode: Some(Keycode::Num1), .. } => {
                         self.vx[((instruction & 0x0F00) >> 8) as usize] = Wrapping(0x1);
                         break 'wait_key
                     },
-                    Event::KeyDown { keycode: Some(Keycode::NUM_2), .. } => {
+                    Event::KeyUp { keycode: Some(Keycode::Num2), .. } => {
                         self.vx[((instruction & 0x0F00) >> 8) as usize] = Wrapping(0x2);
                         break 'wait_key
                     },
-                    Event::KeyDown { keycode: Some(Keycode::NUM_3), .. } => {
+                    Event::KeyUp { keycode: Some(Keycode::Num3), .. } => {
                         self.vx[((instruction & 0x0F00) >> 8) as usize] = Wrapping(0x3);
                         break 'wait_key
                     },
-                    Event::KeyDown { keycode: Some(Keycode::NUM_4), .. } => {
+                    Event::KeyUp { keycode: Some(Keycode::Num4), .. } => {
                         self.vx[((instruction & 0x0F00) >> 8) as usize] = Wrapping(0xC);
                         break 'wait_key
                     },
-                    Event::KeyDown { keycode: Some(Keycode::Q), .. } => {
+                    Event::KeyUp { keycode: Some(Keycode::Q), .. } => {
                         self.vx[((instruction & 0x0F00) >> 8) as usize] = Wrapping(0x4);
                         break 'wait_key
                     },
-                    Event::KeyDown { keycode: Some(Keycode::W), .. } => {
+                    Event::KeyUp { keycode: Some(Keycode::W), .. } => {
                         self.vx[((instruction & 0x0F00) >> 8) as usize] = Wrapping(0x5);
                         break 'wait_key
                     },
-                    Event::KeyDown { keycode: Some(Keycode::E), .. } => {
+                    Event::KeyUp { keycode: Some(Keycode::E), .. } => {
                         self.vx[((instruction & 0x0F00) >> 8) as usize] = Wrapping(0x6);
                         break 'wait_key
                     },
-                    Event::KeyDown { keycode: Some(Keycode::R), .. } => {
+                    Event::KeyUp { keycode: Some(Keycode::R), .. } => {
                         self.vx[((instruction & 0x0F00) >> 8) as usize] = Wrapping(0xD);
                         break 'wait_key
                     },
-                    Event::KeyDown { keycode: Some(Keycode::A), .. } => {
+                    Event::KeyUp { keycode: Some(Keycode::A), .. } => {
                         self.vx[((instruction & 0x0F00) >> 8) as usize] = Wrapping(0x7);
                         break 'wait_key
                     },
-                    Event::KeyDown { keycode: Some(Keycode::S), .. } => {
+                    Event::KeyUp { keycode: Some(Keycode::S), .. } => {
                         self.vx[((instruction & 0x0F00) >> 8) as usize] = Wrapping(0x8);
                         break 'wait_key
                     },
-                    Event::KeyDown { keycode: Some(Keycode::D), .. } => {
+                    Event::KeyUp { keycode: Some(Keycode::D), .. } => {
                         self.vx[((instruction & 0x0F00) >> 8) as usize] = Wrapping(0x9);
                         break 'wait_key
                     },
-                    Event::KeyDown { keycode: Some(Keycode::F), .. } => {
+                    Event::KeyUp { keycode: Some(Keycode::F), .. } => {
                         self.vx[((instruction & 0x0F00) >> 8) as usize] = Wrapping(0xE);
                         break 'wait_key
                     },
-                    Event::KeyDown { keycode: Some(Keycode::Z), .. } => {
+                    Event::KeyUp { keycode: Some(Keycode::Z), .. } => {
                         self.vx[((instruction & 0x0F00) >> 8) as usize] = Wrapping(0xA);
                         break 'wait_key
                     },
-                    Event::KeyDown { keycode: Some(Keycode::X), .. } => {
+                    Event::KeyUp { keycode: Some(Keycode::X), .. } => {
                         self.vx[((instruction & 0x0F00) >> 8) as usize] = Wrapping(0x0);
                         break 'wait_key
                     },
-                    Event::KeyDown { keycode: Some(Keycode::C), .. } => {
+                    Event::KeyUp { keycode: Some(Keycode::C), .. } => {
                         self.vx[((instruction & 0x0F00) >> 8) as usize] = Wrapping(0xB);
                         break 'wait_key
                     },
-                    Event::KeyDown { keycode: Some(Keycode::V), .. } => {
+                    Event::KeyUp { keycode: Some(Keycode::V), .. } => {
                         self.vx[((instruction & 0x0F00) >> 8) as usize] = Wrapping(0xF);
                         break 'wait_key
                     },
@@ -464,6 +487,18 @@ impl CPU<'_> {
         let n = (instruction & 0x0F00) >> 8;
         for i in 0..n + 1{
             self.vx[i as usize] = Wrapping(self.memory[(self.index_register + i) as usize]);
+        }
+    }
+
+    fn skip_if_key(&mut self, instruction: u16) {
+        if self.is_key_down(self.vx[((instruction & 0x0F00) >> 8) as usize].0) {
+            self.pc += 2;
+        }
+    }
+
+    fn skip_if_not_key(&mut self, instruction: u16) {
+        if !self.is_key_down(self.vx[((instruction & 0x0F00) >> 8) as usize].0) {
+            self.pc += 2;
         }
     }
 }

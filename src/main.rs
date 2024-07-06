@@ -1,16 +1,18 @@
 mod processor;
 mod font;
 
+
 use sdl2::pixels::Color;
 use sdl2::event::Event;
-use sdl2::keyboard::Keycode;
-use std::time::{SystemTime, Duration};
+use std::time::Duration;
 
 const SLEEP_TIME: u64 = 2;
-const ROM_PATH: &str = "ROMs/tests/5-quirks.ch8";
+const ROM_PATH: &str = "ROMs/tests/4-flags.ch8";
 
 use sdl2::audio::{AudioCallback, AudioSpecDesired};
 use std::f32::consts::PI;
+
+
 
 struct SineWave {
     phase: f32,
@@ -70,24 +72,14 @@ pub fn main() {
 
     // let mut event_pump = sdl_context.event_pump().unwrap();
 
-    let mut now = SystemTime::now();
     'running: loop {
 
         for event in cpu.event.poll_iter() {
-            match event {
-                Event::Quit {..} |
-                Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
-                    break 'running
-                },
-                _ => {}
-            }
+            if let Event::Quit { .. } = event {
+                break 'running;
+            };
         }
         
-        if now.elapsed().unwrap().as_millis() >= 1000 {
-            cpu.update_timers();
-            now = SystemTime::now();
-        }
-
         cpu.run();
 
         ::std::thread::sleep(Duration::from_millis(SLEEP_TIME));
