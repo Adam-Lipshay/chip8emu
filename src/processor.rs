@@ -141,8 +141,8 @@ impl CPU<'_> {
     fn update_display(&mut self) {
         self.display.set_draw_color(BACKGROUND_COLOR);
         self.display.clear();
-        for row in 0..31 {
-            for column in 0..63 {
+        for row in 0..32 {
+            for column in 0..64 {
                 if (self.display_array[row] & (1 << column)) != 0 {
                     self.display.set_draw_color(DRAW_COLOR);
                     self.display.draw_point(Point::new(column, row as i32)).expect("Failed to draw point");
@@ -276,6 +276,8 @@ impl CPU<'_> {
         self.vx[((instruction & 0x0F00) >> 8) as usize] = x + y;
         if (x.0 as u16 + y.0 as u16) > u8::MAX as u16 {
             self.vx[0xF as usize] = Wrapping(1);
+        } else {
+            self.vx[0xF as usize] = Wrapping(0);
         }
     }
 
@@ -283,7 +285,7 @@ impl CPU<'_> {
         let x = self.vx[((instruction & 0x0F00) >> 8) as usize];
         let y = self.vx[((instruction & 0x00F0) >> 4) as usize];
         self.vx[((instruction & 0x0F00) >> 8) as usize] = x - y;
-        if x > y {
+        if x >= y {
             self.vx[0xF as usize] = Wrapping(1);
         } else {
             self.vx[0xF as usize] = Wrapping(0);
@@ -294,7 +296,7 @@ impl CPU<'_> {
         let x = self.vx[((instruction & 0x0F00) >> 8) as usize];
         let y = self.vx[((instruction & 0x00F0) >> 4) as usize];
         self.vx[((instruction & 0x0F00) >> 8) as usize] = y - x;
-        if y > x {
+        if y >= x {
             self.vx[0xF as usize] = Wrapping(1);
         } else {
             self.vx[0xF as usize] = Wrapping(0);
@@ -303,37 +305,42 @@ impl CPU<'_> {
 
     fn shift_register_right(&mut self, instruction: u16) {
         if SHIFT_TYPE == ShiftTypes::AsX {
-            if self.vx[((instruction & 0x0F00) >> 8) as usize].0 & 1 == 1 {
+            let x = self.vx[((instruction & 0x0F00) >> 8) as usize].0;
+            self.vx[((instruction & 0x0F00) >> 8) as usize] = Wrapping(x >> 1);
+            if x & 1 == 1 {
                 self.vx[0xF as usize] = Wrapping(1);
             } else {
                 self.vx[0xF as usize] = Wrapping(0);
             }
-            self.vx[((instruction & 0x0F00) >> 8) as usize] = Wrapping(self.vx[((instruction & 0x0F00) >> 8) as usize].0 >> 1);
         } else {
-            if self.vx[((instruction & 0x00F0) >> 4) as usize].0 & 1 == 1 {
+            let x = self.vx[((instruction & 0x00F0) >> 4) as usize].0;
+            self.vx[((instruction & 0x0F00) >> 8) as usize] = Wrapping(x >> 1);
+            if x & 1 == 1 {
                 self.vx[0xF as usize] = Wrapping(1);
             } else {
                 self.vx[0xF as usize] = Wrapping(0);
             }
-            self.vx[((instruction & 0x0F00) >> 8) as usize] = Wrapping(self.vx[((instruction & 0x00F0) >> 4) as usize].0 >> 1);
         }
     }
 
     fn shift_register_left(&mut self, instruction: u16) {
         if SHIFT_TYPE == ShiftTypes::AsX {
-            if self.vx[((instruction & 0x0F00) >> 8) as usize].0 & (1 << 7) == 128 {
+            let x = self.vx[((instruction & 0x0F00) >> 8) as usize].0;
+            self.vx[((instruction & 0x0F00) >> 8) as usize] = Wrapping(x << 1);
+            if x & (1 << 7) == 128 {
                 self.vx[0xF as usize] = Wrapping(1);
             } else {
                 self.vx[0xF as usize] = Wrapping(0);
             }
-            self.vx[((instruction & 0x0F00) >> 8) as usize] = Wrapping(self.vx[((instruction & 0x0F00) >> 8) as usize].0 << 1);
+            
         } else {
-            if self.vx[((instruction & 0x00F0) >> 4) as usize].0 & (1 << 7) == 128 {
+            let x = self.vx[((instruction & 0x00F0) >> 4) as usize].0;
+            self.vx[((instruction & 0x0F00) >> 8) as usize] = Wrapping(x << 1);
+            if x & (1 << 7) == 128 {
                 self.vx[0xF as usize] = Wrapping(1);
             } else {
                 self.vx[0xF as usize] = Wrapping(0);
             }
-            self.vx[((instruction & 0x0F00) >> 8) as usize] = Wrapping(self.vx[((instruction & 0x00F0) >> 4) as usize].0 << 1);
         }
     }
 

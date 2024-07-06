@@ -7,7 +7,7 @@ use sdl2::keyboard::Keycode;
 use std::time::{SystemTime, Duration};
 
 const SLEEP_TIME: u64 = 2;
-const ROM_PATH: &str = "ROMs/tests/4-flags.ch8";
+const ROM_PATH: &str = "ROMs/tests/5-quirks.ch8";
 
 use sdl2::audio::{AudioCallback, AudioSpecDesired};
 use std::f32::consts::PI;
