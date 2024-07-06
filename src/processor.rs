@@ -224,6 +224,9 @@ impl CPU<'_> {
                     break;
                 }
                 let cy = y as u16 + byte;
+                if cy > 31 {
+                    break;
+                }
                 let cpixel = self.get_pixel(cx as u32, cy as u32);
                 let row_pixel = (row & (1 << 7 - bit)) >> 7 - bit;
                 self.set_pixel(cx as u32, cy as u32, cpixel ^ row_pixel);
