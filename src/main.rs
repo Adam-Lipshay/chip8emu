@@ -1,18 +1,15 @@
 mod processor;
 mod font;
 
+use std::env::{self};
 
 use sdl2::pixels::Color;
 use sdl2::event::Event;
 use std::time::Duration;
-
-const SLEEP_TIME: u64 = 2;
-const ROM_PATH: &str = "ROMs/tests/6-keypad.ch8";
-
 use sdl2::audio::{AudioCallback, AudioSpecDesired};
 use std::f32::consts::PI;
 
-
+const SLEEP_TIME: u64 = 2;
 
 struct SineWave {
     phase: f32,
@@ -35,6 +32,14 @@ impl AudioCallback for SineWave {
 }
 
 pub fn main() {
+    let args: Vec<String> = env::args().collect();
+
+    if args.len() < 2 {
+        panic!("Please input a path to a ROM file.");
+    }
+    let rom = std::fs::read(&args[1]).expect("Unable to load ROM");
+    
+
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
 
@@ -67,7 +72,6 @@ pub fn main() {
     }).unwrap();
 
     let mut cpu = processor::CPU::new(&mut canvas, device, sdl_context);
-    let rom = std::fs::read(ROM_PATH).unwrap();
     cpu.load(rom);
 
     'running: loop {

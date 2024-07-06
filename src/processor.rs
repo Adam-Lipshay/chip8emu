@@ -173,7 +173,7 @@ impl CPU<'_> {
             self.current_time = SystemTime::now();
         }
         let instruction = self.fetch();
-        println!("Progam Counter: {:#06x} Instruction: {:#06x} Sound Timer: {}, Delay Timer: {}", self.pc, instruction, self.sound_timer, self.delay_timer);
+        //println!("Progam Counter: {:#06x} Instruction: {:#06x} Sound Timer: {}, Delay Timer: {}", self.pc, instruction, self.sound_timer, self.delay_timer);
         self.execute(instruction);
         if self.sound_timer > 0 {
             self.audio_device.resume();
@@ -366,7 +366,7 @@ impl CPU<'_> {
 
     fn random(&mut self, instruction: u16) {
         let random_number: u8 = rand::thread_rng().gen();
-        self.vx[((instruction & 0x0F00) >> 8) as usize] = self.vx[((instruction & 0x0F00) >> 8) as usize] & Wrapping(random_number);
+        self.vx[((instruction & 0x0F00) >> 8) as usize] = Wrapping((instruction & 0x00FF) as u8 & random_number);
     }
 
     fn get_delay_timer(&mut self, instruction: u16) {
