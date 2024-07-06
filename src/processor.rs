@@ -168,11 +168,12 @@ impl CPU<'_> {
     }
 
     pub fn run(&mut self) {
-        if self.current_time.elapsed().unwrap().as_millis() >= 1000 {
+        if self.current_time.elapsed().unwrap().as_millis() >= 17 {
             self.update_timers();
             self.current_time = SystemTime::now();
         }
         let instruction = self.fetch();
+        println!("Progam Counter: {:#06x} Instruction: {:#06x} Sound Timer: {}, Delay Timer: {}", self.pc, instruction, self.sound_timer, self.delay_timer);
         self.execute(instruction);
         if self.sound_timer > 0 {
             self.audio_device.resume();
@@ -386,7 +387,7 @@ impl CPU<'_> {
 
     fn get_key(&mut self, instruction: u16) {
         'wait_key: loop {
-            if self.current_time.elapsed().unwrap().as_millis() >= 1000 {
+            if self.current_time.elapsed().unwrap().as_millis() >= 17 {
                 self.update_timers();
                 self.current_time = SystemTime::now();
             }
