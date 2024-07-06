@@ -7,7 +7,7 @@ use sdl2::keyboard::Keycode;
 use std::time::{SystemTime, Duration};
 
 const SLEEP_TIME: u64 = 2;
-
+const ROM_PATH: &str = "ROMs/tests/4-flags.ch8";
 
 use sdl2::audio::{AudioCallback, AudioSpecDesired};
 use std::f32::consts::PI;
@@ -65,7 +65,7 @@ pub fn main() {
     }).unwrap();
 
     let mut cpu = processor::CPU::new(&mut canvas, device, sdl_context);
-    let rom = std::fs::read("ROMs/BC_test.ch8").unwrap();
+    let rom = std::fs::read(ROM_PATH).unwrap();
     cpu.load(rom);
 
     // let mut event_pump = sdl_context.event_pump().unwrap();

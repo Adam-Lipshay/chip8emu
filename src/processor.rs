@@ -114,6 +114,10 @@ impl CPU<'_> {
                 0x0018 => self.set_sound_timer(instruction),
                 0x001E => self.add_to_index(instruction),
                 0x000A => self.get_key(instruction),
+                0x0029 => self.get_font_character(instruction),
+                0x0033 => self.binary_to_decimal(instruction),
+                0x0055 => self.save_registers(instruction),
+                0x0065 => self.load_registers(instruction),
                 _ => println!("unknow F instruction {:#06x}", instruction)
             },
 
@@ -427,5 +431,32 @@ impl CPU<'_> {
             }
         }
         
+    }
+
+    fn get_font_character(&mut self, instruction: u16) {
+        self.index_register = (self.vx[((instruction & 0x0F00) >> 8) as usize].0 as u16)*5;
+    }
+
+    fn binary_to_decimal(&mut self, instruction: u16) {
+        let number = self.vx[((instruction & 0x0F00) >> 8) as usize].0;
+        
+        self.memory[self.index_register as usize] = number / 100;
+        self.memory[self.index_register as usize + 1] = (number / 10) % 10;
+        self.memory[self.index_register as usize + 2] = number % 10;
+        println!("{} {} {}", self.memory[self.index_register as usize], self.memory[self.index_register as usize + 1],self.memory[self.index_register as usize + 2])
+    }
+
+    fn save_registers(&mut self, instruction: u16) {
+        let n = (instruction & 0x0F00) >> 8;
+        for i in 0..n + 1 {
+            self.memory[(self.index_register + i) as usize] = self.vx[i as usize].0;
+        }
+    }
+
+    fn load_registers(&mut self, instruction: u16) {
+        let n = (instruction & 0x0F00) >> 8;
+        for i in 0..n + 1{
+            self.vx[i as usize] = Wrapping(self.memory[(self.index_register + i) as usize]);
+        }
     }
 }
