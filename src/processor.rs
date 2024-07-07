@@ -35,6 +35,7 @@ pub struct CPU<'a> {
     display: &'a mut Canvas<sdl2::video::Window>,
     audio_device: AudioDevice<SineWave>,
     pub event: sdl2::EventPump,
+    event_system: sdl2::EventSubsystem,
     display_array: [u64; 32],
     current_time: SystemTime,
 }
@@ -56,6 +57,7 @@ impl CPU<'_> {
             display: canvas,
             audio_device: device,
             event: sdl_context.event_pump().unwrap(),
+            event_system: sdl_context.event().unwrap(),
             display_array: [0; 32],
             current_time: SystemTime::now(),
         }
@@ -396,6 +398,10 @@ impl CPU<'_> {
             }
             for event in self.event.poll_iter() {
                 match event {
+                    Event::Quit { .. } | Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
+                        self.event_system.push_event(Event::Quit { timestamp: 0 }).unwrap();
+                        break 'wait_key;
+                    },
                     Event::KeyUp { keycode: Some(Keycode::Num1), .. } => {
                         self.vx[((instruction & 0x0F00) >> 8) as usize] = Wrapping(0x1);
                         break 'wait_key
